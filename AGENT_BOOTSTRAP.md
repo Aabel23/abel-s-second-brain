@@ -1,6 +1,6 @@
 # Second brain cá nhân
 
-**⚖ HIẾN PHÁP, quan trọng nhất:** đọc `/home/abel/.secondbrain/HIEN_PHAP.md` trước mọi việc (user chốt 10/10/2026, khóa cứng). Mọi note khác trong vault chỉ là kho lưu trữ kèm theo. Tóm tắt: system design qua chat trước, kỹ thuật sau; không nhảy sang code khi user chưa chốt; cấm overengineer, bám sát logic thiết kế; vấn đề phát sinh thì ghi chú và bàn với user, không tự sửa code.
+**⚖ HIẾN PHÁP, quan trọng nhất:** đọc `/home/abel/.secondbrain/HIEN_PHAP.md` trước mọi việc (user chốt 10/10/2026, khóa cứng). Mọi note khác trong vault chỉ là kho lưu trữ kèm theo. Tóm tắt: system design qua chat trước, kỹ thuật sau; không nhảy sang code khi user chưa chốt; cấm overengineer, bám sát logic thiết kế; vấn đề phát sinh thì ghi chú và bàn với user, không tự sửa code; stage architect hỏi user tới khi chốt hết (user bảo tự quyết thì agent tự chốt bản hoàn chỉnh), planner chỉ chia việc theo kiến trúc đã chốt, không hỏi lại thiết kế trừ logic quan trọng.
 
 Với task cần ngữ cảnh từ phiên trước, đọc `/home/abel/.secondbrain/INDEX.md` và các note liên quan theo `/home/abel/.secondbrain/RULES.md`. Với task trong `internproj`, chọn bản đồ repo từ `projects/internproj/README.md` rồi kiểm lại code. Khi review/cập nhật xác nhận cấu trúc hoặc vai trò code thay đổi, cập nhật note project tương ứng theo `RULES.md`. Khi user yêu cầu chốt/lưu phiên, dùng skill `session-secondbrain`. Vault là nguồn chuẩn. Thứ tự ưu tiên: yêu cầu hiện tại của user → `HIEN_PHAP.md` → bằng chứng dự án → các note memory khác.
 

@@ -6,7 +6,7 @@ Thư mục này là nguồn chuẩn cho quy tắc, thiết kế và ký ức dù
 
 **[HIEN_PHAP.md](HIEN_PHAP.md)** là văn bản quan trọng nhất của vault (user chốt 10/10/2026). Mọi file khác dưới đây chỉ là **kho lưu trữ kèm theo**, dùng để tra cứu và không được đi ngược hiến pháp.
 
-Tóm tắt: tầng 1 system design (bàn qua chat → operator đặc tả, chia khối → HTML sơ đồ khối và luồng → user sửa → research song song Sonnet med; coder cũng Sonnet med, planner Opus high → tổng hợp, cải tiến, lặp) → tầng 2 từng khối (research → case study → architect → document → debate → improvement → final decision → execution). Kỷ luật: cấm overengineer, bám logic thiết kế, vấn đề phát sinh thì ghi chú và bàn, không tự sửa code.
+Tóm tắt: tầng 1 system design (bàn qua chat → operator đặc tả, chia khối → HTML sơ đồ khối và luồng → user sửa → research song song Sonnet med; coder cũng Sonnet med, planner Opus high → tổng hợp, cải tiến, lặp) → tầng 2 từng khối (research → case study → architect → document → debate → improvement → final decision → execution). Stage architect (12/10/2026): hỏi user theo lượt tới khi chốt hết tiêu chí và xung đột; user nói "tự quyết" thì agent tự chốt bản kiến trúc hoàn chỉnh. Planner chỉ chia việc theo bản kiến trúc đã chốt, không hỏi lại thiết kế trừ logic quan trọng. Kỷ luật: cấm overengineer, bám logic thiết kế, vấn đề phát sinh thì ghi chú và bàn, không tự sửa code.
 
 ---
 
@@ -66,6 +66,7 @@ Các fact `confirmed` hiện ghi cách mở đầu câu trả lời, thiết k�
 | [facts/project1-app-server-database-confirmed.md](facts/project1-app-server-database-confirmed.md) | project:project1_app · confirmed | Server giữ bản sao nhật ký; quyền lưu lịch sử; offline thì từ chối lệnh, chỉ giữ thông điệp quản trị; research ở mức khái niệm |
 | [facts/doc-data-diagrams-erd.md](facts/doc-data-diagrams-erd.md) | global · confirmed | Doc về database dùng sơ đồ chuẩn ngành dữ liệu (ERD chân chim, state/sequence UML), không dùng sơ đồ khối FexMix |
 | [proposals/cach-lam-viec-cua-user.md](proposals/cach-lam-viec-cua-user.md) | global · proposed | Suy luận về cách bạn làm việc, chờ bạn xác nhận |
+| [skills/architect-stage.md](skills/architect-stage.md) | global · confirmed | Stage architect: bảng 12 tiêu chí, hỏi user theo lượt tới khi hết mục mở, ủy quyền "tự quyết" thì tự chốt và bổ sung, đóng băng bản kiến trúc, giao planner kèm luật không hỏi lại thiết kế |
 | [skills/research-stage.md](skills/research-stage.md) | global | Research stage: "deep research" tự chia nhỏ và cử agent, tổng hợp, HTML research có chú thích; bản chạy ở `~/.claude/skills/research-stage/` |
 | [skills/kiem-tra-repo.md](skills/kiem-tra-repo.md) | global | "<path> check": kiểm, chạy test, báo, không tự sửa |
 | [skills/plan-live-checklist.md](skills/plan-live-checklist.md) | global | Trang plan live + checklist + quy tắc md |
