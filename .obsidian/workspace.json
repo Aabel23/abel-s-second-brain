@@ -1,0 +1,218 @@
+{
+  "main": {
+    "id": "150dea44d6d0b445",
+    "type": "split",
+    "children": [
+      {
+        "id": "cc61b296907bb926",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "34b5b1a01f053554",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "eb5b3a8eaa54dfa1",
+    "type": "split",
+    "children": [
+      {
+        "id": "7b65d117b7c98644",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1ee998021cb71d19",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "177680b883395de9",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "77030989b36f1e76",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "8ce59809b3cc687e",
+    "type": "split",
+    "children": [
+      {
+        "id": "d0b6221eca7ce371",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "cb2469cfc4fb04f9",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "1958abf27b5a5bd1",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "f39d28883cf73d9c",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "a994f41a4c379906",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "f2b199a8d7660c9a",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "34b5b1a01f053554",
+  "lastOpenFiles": [
+    "README.md",
+    "projects/internproj/project1_app/archive/contracts-skeleton-research-2026-10-12.md",
+    "facts/tiered-project-context.md",
+    "facts/test-tool-no-cheating.md",
+    "facts/save-research-sources-to-vault.md",
+    "facts/routing-naming-standard.md",
+    "facts/reply-yess-bosss.md",
+    "facts/project1-app-v11-iot-design-confirmed.md",
+    "facts/project1-app-protocol-focus.md",
+    "facts/project-map-upkeep.md",
+    "facts/luu-md-session-secondbrain.md",
+    "facts/document-style-framework.md",
+    "facts/document-standard-flexmix-manual.md",
+    "HIEN_PHAP.md",
+    "INDEX.md",
+    "RULES.md",
+    "sessions/2026-10-11-multi-agent-orchestration-research.md",
+    "sessions/2026-10-11-multi-agent-orchestration-research.md.tmp.69611.f66e8ed072e7",
+    "projects/internproj/project1_app/archive/multi-agent-orchestration-research-2026-10-11.md",
+    "projects/internproj/project1_app/archive/multi-agent-orchestration-research-2026-10-11.md.tmp.69611.4de24045816c",
+    "AGENT_BOOTSTRAP.md",
+    "Untitled.base",
+    "Untitled.canvas",
+    "projects/internproj/project1_app/ARCHITECTURE.md",
+    "projects/internproj/project1_app/archive/heartbeat-plan-2026-10-10/README.md",
+    "projects/internproj/project1_app/archive/heartbeat-plan-2026-10-10/README.md.tmp.14387.64d8b71641b1",
+    "projects/internproj/project1_app/archive/heartbeat-plan-2026-10-10/test_machine_online.reference.py",
+    "projects/internproj/project1_app/archive/heartbeat-plan-2026-10-10/prototype-phase1.diff",
+    "projects/internproj/project1_app/archive/heartbeat-plan-2026-10-10/prototype-all-phases.diff",
+    "projects/internproj/project1_app/archive/heartbeat-plan-2026-10-10",
+    "TEST.md"
+  ]
+}

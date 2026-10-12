@@ -1,0 +1,671 @@
+diff --git a/server/config/config.py b/server/config/config.py
+index 9d3a0e4..29251e9 100644
+--- a/server/config/config.py
++++ b/server/config/config.py
+@@ -2,7 +2,9 @@
+ 
+ SERVER_HOST = "0.0.0.0"
+ SERVER_PORT = 8000
+-HEARTBEAT_TIMEOUT_SECONDS = 15
++# Máy rảnh: poll hoặc gửi kết quả cuối cách đây dưới chừng này giây thì còn online.
++# Phải lớn hơn POLL_WAIT_SECONDS để máy đang treo một poll luôn được tính là online.
++MACHINE_SEEN_TIMEOUT_SECONDS = 15
+ COMMAND_TIMEOUT_SECONDS = 20
+ # Máy hỏi lệnh được giữ tối đa chừng này giây (long-poll); nhỏ hơn timeout 10s của máy.
+ POLL_WAIT_SECONDS = 8
+diff --git a/server/config/routing.py b/server/config/routing.py
+index a372637..701093b 100644
+--- a/server/config/routing.py
++++ b/server/config/routing.py
+@@ -38,7 +38,6 @@ MACHINE_IMAGE_GET = "/app/machine/image/get"
+ MACHINE_INGREDIENT_GET = "/app/machine/ingredient/get"
+ MACHINE_INGREDIENT_REFILL = "/app/machine/ingredient/refill"
+ 
+-# Cổng máy — heartbeat, long-poll nhận lệnh và trả kết quả
+-MACHINE_HEARTBEAT_SEND = "/machine/heartbeat/send"
++# Cổng máy — long-poll nhận lệnh và trả kết quả
+ MACHINE_COMMAND_POLL = "/machine/command/poll"
+ MACHINE_RESULT_SEND = "/machine/result/send"
+diff --git a/server/lib/machine/machine_transport.py b/server/lib/machine/machine_transport.py
+index e19e238..b364e1b 100644
+--- a/server/lib/machine/machine_transport.py
++++ b/server/lib/machine/machine_transport.py
+@@ -1,4 +1,4 @@
+-"""Hộp thư lệnh của từng máy và giờ heartbeat; chỉ nằm trong RAM.
++"""Hộp thư lệnh của từng máy và trạng thái online suy từ long-poll; chỉ nằm trong RAM.
+ 
+ Máy nằm sau router của quán nên server không gọi xuống máy được. Module cần máy
+ làm gì thì gọi send(): lệnh {id, instruction, data} nằm trong hộp thư tới khi
+@@ -13,7 +13,7 @@ import time
+ from itertools import count
+ 
+ # Server chung: cấu hình
+-from server.config.config import COMMAND_TIMEOUT_SECONDS, HEARTBEAT_TIMEOUT_SECONDS, POLL_WAIT_SECONDS
++from server.config.config import COMMAND_TIMEOUT_SECONDS, MACHINE_SEEN_TIMEOUT_SECONDS, POLL_WAIT_SECONDS
+ 
+ # machine_id -> các lệnh chờ máy lấy.
+ HOP_THU = {}
+@@ -23,23 +23,43 @@ KHOA = threading.Lock()
+ # Đánh thức máy đang long-poll khi hộp thư có lệnh mới.
+ CO_LENH = threading.Condition(KHOA)
+ DEM_LENH = count(1)
+-# machine_id -> time.time() lần heartbeat cuối.
+-LAN_HEARTBEAT_CUOI = {}
++# machine_id -> time.time() lần cuối máy poll hoặc gửi kết quả (đã xác minh key).
++LAN_THAY_CUOI = {}
++# machine_id -> {id lệnh: time.time() lúc máy lấy}; chỉ lệnh máy ĐÃ lấy mà send() còn chờ.
++# Không suy từ DANG_CHO: send() ghi DANG_CHO trước khi máy lấy lệnh.
++DANG_LAM = {}
+ 
+ 
+ def mark_seen(machine_id):
++    """Gọi sau khi xác minh key, trước take(); không gọi khi đang giữ KHOA (KHOA không reentrant)."""
+     with KHOA:
+-        LAN_HEARTBEAT_CUOI[machine_id] = time.time()
++        LAN_THAY_CUOI[machine_id] = time.time()
+ 
+ 
+ def last_seen_of(machine_id):
+     with KHOA:
+-        return LAN_HEARTBEAT_CUOI.get(machine_id)
++        return LAN_THAY_CUOI.get(machine_id)
+ 
+ 
+ def is_online(machine_id):
+-    last_seen = last_seen_of(machine_id)
+-    return last_seen is not None and time.time() - last_seen < HEARTBEAT_TIMEOUT_SECONDS
++    """Vòng lệnh của máy còn chạy: rảnh (poll/kết quả gần đây) hoặc bận (đang làm lệnh đã lấy)."""
++    now = time.time()
++    with KHOA:
++        last_seen = LAN_THAY_CUOI.get(machine_id)
++        taken = list(DANG_LAM.get(machine_id, {}).values())
++    if last_seen is not None and now - last_seen < MACHINE_SEEN_TIMEOUT_SECONDS:
++        return True
++    return any(now - taken_at < COMMAND_TIMEOUT_SECONDS for taken_at in taken)
++
++
++def _finish(machine_id, lenh_id):
++    """Bỏ lệnh khỏi DANG_LAM của đúng máy; gọi khi đang giữ KHOA."""
++    lam = DANG_LAM.get(machine_id)
++    if lam is None:
++        return
++    lam.pop(lenh_id, None)
++    if not lam:
++        del DANG_LAM[machine_id]
+ 
+ 
+ def send(machine_id, instruction, data):
+@@ -63,6 +83,7 @@ def send(machine_id, instruction, data):
+     finally:
+         with KHOA:
+             DANG_CHO.pop(lenh["id"], None)
++            _finish(machine_id, lenh["id"])
+     if not isinstance(ket_qua, dict):
+         return {"loi": "Máy trả kết quả không đúng dạng"}, 502
+     return ket_qua, 502 if "loi" in ket_qua else 200
+@@ -85,13 +106,20 @@ def take(machine_id):
+     with CO_LENH:
+         CO_LENH.wait_for(lambda: HOP_THU.get(machine_id), timeout=POLL_WAIT_SECONDS)
+         hop_thu = HOP_THU.get(machine_id)
+-        return hop_thu.pop(0) if hop_thu else None
++        if not hop_thu:
++            return None
++        lenh = hop_thu.pop(0)
++        # Máy đã lấy: tính là bận tới khi có kết quả hoặc send() hết giờ.
++        DANG_LAM.setdefault(machine_id, {})[lenh["id"]] = time.time()
++        return lenh
+ 
+ 
+ def deliver(machine_id, lenh_id, ket_qua):
+     """Chuyển kết quả cho send() đang chờ, chỉ khi lệnh đó được giao cho đúng máy này."""
+     with KHOA:
+         cho = DANG_CHO.get(lenh_id)
++        if cho is not None and cho[0] == machine_id:
++            _finish(machine_id, lenh_id)
+     if cho is None or cho[0] != machine_id:
+         return
+     try:
+diff --git a/server/service/machine_link/machine_link_main.py b/server/service/machine_link/machine_link_main.py
+index 136f550..23f4174 100644
+--- a/server/service/machine_link/machine_link_main.py
++++ b/server/service/machine_link/machine_link_main.py
+@@ -1,6 +1,5 @@
+ """HTTP phía máy: chỉ máy gọi các route này, xưng danh bằng product key.
+ 
+-    POST /machine/heartbeat/send  {product_key}               mỗi 5 giây, báo còn sống
+     POST /machine/command/poll    {product_key}               long-poll lấy lệnh {id, instruction, data}
+     POST /machine/result/send     {product_key, id, ket_qua}  gửi kết quả lệnh
+ 
+@@ -8,15 +7,14 @@ Module khác gửi lệnh xuống máy bằng machine_transport.send(), không q
+ """
+ 
+ # Routing tập trung và HTTP dùng chung
+-from server.config.routing import MACHINE_HEARTBEAT_SEND, MACHINE_COMMAND_POLL, MACHINE_RESULT_SEND
++from server.config.routing import MACHINE_COMMAND_POLL, MACHINE_RESULT_SEND
+ from server.lib.http.http_json import handle_routes
+ 
+ # Trong module machine_link
+-from .machine_link_process import heartbeat, poll, send_result
++from .machine_link_process import poll, send_result
+ 
+ 
+ ROUTES = {
+-    MACHINE_HEARTBEAT_SEND: heartbeat,
+     MACHINE_COMMAND_POLL: poll,
+     MACHINE_RESULT_SEND: send_result,
+ }
+diff --git a/server/service/machine_link/machine_link_process.py b/server/service/machine_link/machine_link_process.py
+index 29a06e8..7567efd 100644
+--- a/server/service/machine_link/machine_link_process.py
++++ b/server/service/machine_link/machine_link_process.py
+@@ -24,24 +24,15 @@ def machine_from_key(data):
+     return find_id_by_key_hash(sha256_hex(key))
+ 
+ 
+-# Heartbeat: máy báo đang hoạt động, không lấy hoặc thực hiện lệnh.
+-def heartbeat(data):
+-    # 1. Xác minh product key trước khi cập nhật trạng thái.
+-    machine_id = machine_from_key(data)
+-    if machine_id is None:
+-        return MACHINE_UNKNOWN, 403
+-    # 2. Ghi heartbeat vào trạng thái RAM dùng chung.
+-    mark_seen(machine_id)
+-    return {"da_nhan": True}, 200
+-
+-
+ # Hỏi lệnh: máy chủ động lấy việc từ hộp thư của chính nó.
+ def poll(data):
+     # 1. Xác minh product key để chọn đúng hộp thư.
+     machine_id = machine_from_key(data)
+     if machine_id is None:
+         return MACHINE_UNKNOWN, 403
+-    # 2. Long-poll chờ một lệnh; hết thời gian chờ thì trả lenh=null.
++    # 2. Máy đang hỏi lệnh là vòng lệnh còn chạy; ghi trước khi chờ, không ghi lúc trả về.
++    mark_seen(machine_id)
++    # 3. Long-poll chờ một lệnh; hết thời gian chờ thì trả lenh=null.
+     return {"lenh": take(machine_id)}, 200
+ 
+ 
+@@ -51,6 +42,7 @@ def send_result(data):
+     machine_id = machine_from_key(data)
+     if machine_id is None:
+         return MACHINE_UNKNOWN, 403
++    mark_seen(machine_id)
+     # 2. Transport ghép kết quả bằng machine_id và ID lệnh.
+     deliver(machine_id, data.get("id"), data.get("ket_qua"))
+     return {"da_nhan": True}, 200
+diff --git a/tests/python/test_machine_menu_image.py b/tests/python/test_machine_menu_image.py
+index 83ae167..5524472 100644
+--- a/tests/python/test_machine_menu_image.py
++++ b/tests/python/test_machine_menu_image.py
+@@ -53,7 +53,7 @@ class MachineMenuImageTest(unittest.TestCase):
+             "machine_name": "FlexMix-Image", "product_key": KEY, "token": self.token,
+         })
+         self.machine_id = machine["machine_id"]
+-        self.request("/machine/heartbeat/send", {"product_key": KEY})
++        self.request("/machine/command/poll", {"product_key": KEY})
+ 
+     def request(self, path, data):
+         url = f"http://127.0.0.1:{self.server.server_port}{path}"
+diff --git a/tests/python/test_machine_online.py b/tests/python/test_machine_online.py
+new file mode 100644
+index 0000000..6cc750c
+--- /dev/null
++++ b/tests/python/test_machine_online.py
+@@ -0,0 +1,199 @@
++"""Online suy từ long-poll và lệnh đã lấy (HTTP thật, SQLite tạm).
++
++Chạy: python -m unittest tests.python.test_machine_online -v
++"""
++
++import json
++import tempfile
++import threading
++import time
++import unittest
++from concurrent.futures import ThreadPoolExecutor
++from pathlib import Path
++from unittest.mock import patch
++from urllib.error import HTTPError
++from urllib.request import Request, urlopen
++
++from server import main
++from server.config import config
++from server.database.connection import get_connection
++from server.database.machine.init_db import init_db
++from server.lib.http import http_rate_limit as rate_limit
++from server.lib.machine import machine_transport as relay
++from server.lib.security.user_session import create_session
++
++KEY = "online-key"
++TRANSPORT = "server.lib.machine.machine_transport."
++
++
++class MachineOnlineTest(unittest.TestCase):
++    def setUp(self):
++        directory = tempfile.TemporaryDirectory()
++        self.addCleanup(directory.cleanup)
++        patch("server.database.connection.DB_PATH", Path(directory.name) / "test.db").start()
++        # Cửa sổ ngắn để test chạy nhanh; tỉ lệ giữ như cấu hình thật: poll < seen < command.
++        patch(TRANSPORT + "POLL_WAIT_SECONDS", 0.2).start()
++        patch(TRANSPORT + "MACHINE_SEEN_TIMEOUT_SECONDS", 0.6).start()
++        patch(TRANSPORT + "COMMAND_TIMEOUT_SECONDS", 1.5).start()
++        patch.object(rate_limit, "MAX_REQUESTS", 10 ** 9).start()
++        self.addCleanup(patch.stopall)
++        init_db()
++        rate_limit.IP_REQUESTS.clear()
++        self.server = main.create_server(("127.0.0.1", 0))
++        thread = threading.Thread(target=self.server.serve_forever, daemon=True)
++        thread.start()
++        self.addCleanup(thread.join)
++        self.addCleanup(self.server.server_close)
++        self.addCleanup(self.server.shutdown)
++        self.addCleanup(rate_limit.IP_REQUESTS.clear)
++        self.token, self.machine_id = self.owner_machine("owner", KEY)
++
++    def owner_machine(self, username, key):
++        with get_connection() as conn:
++            user_id = conn.execute(
++                "INSERT INTO users (full_name, username, password, email) VALUES (?, ?, 'x', ?)",
++                (username, username, f"{username}@t.local"),
++            ).lastrowid
++        token = create_session(user_id)
++        _, machine = self.request("/app/user/machine/register", {
++            "machine_name": "FlexMix-Online", "product_key": key, "token": token,
++        })
++        return token, machine["machine_id"]
++
++    def request(self, path, data=None):
++        body = None if data is None else json.dumps(data).encode()
++        url = f"http://127.0.0.1:{self.server.server_port}{path}"
++        try:
++            response = urlopen(Request(url, data=body, headers={"Content-Type": "application/json"}), timeout=10)
++        except HTTPError as error:
++            response = error
++        with response:
++            return response.status, json.loads(response.read())
++
++    def online(self, machine_id=None):
++        return self.request(f"/app/machine/status/get?machine_id={machine_id or self.machine_id}")[1]["online"]
++
++    def poll(self, key=KEY):
++        return self.request("/machine/command/poll", {"product_key": key})[1]["lenh"]
++
++    def take(self, key=KEY):
++        for _ in range(50):
++            lenh = self.poll(key)
++            if lenh is not None:
++                return lenh
++        self.fail("Máy không nhận được lệnh")
++
++    def ask_app(self):
++        return self.request("/app/machine/ingredient/get", {"token": self.token, "machine_id": self.machine_id,
++                                                            "version": 0})
++
++    def test_config_poll_shorter_than_seen_window(self):
++        # Poll đang mở luôn được tính online nhờ lần ghi lúc mở poll.
++        self.assertLess(config.POLL_WAIT_SECONDS, config.MACHINE_SEEN_TIMEOUT_SECONDS)
++        self.assertLessEqual(config.MACHINE_SEEN_TIMEOUT_SECONDS, config.COMMAND_TIMEOUT_SECONDS)
++
++    def test_poll_marks_online_then_expires(self):
++        self.assertFalse(self.online())
++        self.poll()
++        self.assertTrue(self.online())
++        time.sleep(0.8)
++        self.assertFalse(self.online())
++
++    def test_machine_dying_during_poll_counts_from_poll_start(self):
++        # Máy mở poll rồi chết (bỏ kết nối); server vẫn giữ poll tới hết POLL_WAIT.
++        # Online phải tính từ lúc máy gọi, không từ lúc server trả về.
++        with patch(TRANSPORT + "POLL_WAIT_SECONDS", 0.4):
++            started = time.monotonic()
++            with self.assertRaises(OSError):
++                urlopen(Request(f"http://127.0.0.1:{self.server.server_port}/machine/command/poll",
++                                data=json.dumps({"product_key": KEY}).encode(),
++                                headers={"Content-Type": "application/json"}), timeout=0.1)
++            time.sleep(max(0, 0.75 - (time.monotonic() - started)))
++            self.assertFalse(self.online())
++
++    def test_result_marks_online(self):
++        self.request("/machine/result/send", {"product_key": KEY, "id": 999999, "ket_qua": {}})
++        self.assertTrue(self.online())
++
++    def test_queued_untaken_command_does_not_keep_machine_online(self):
++        self.poll()
++        with ThreadPoolExecutor(max_workers=1) as pool:
++            app = pool.submit(self.ask_app)
++            time.sleep(0.8)
++            # Lệnh nằm trong DANG_CHO/HOP_THU nhưng máy chưa lấy: không tính là bận.
++            with relay.KHOA:
++                self.assertTrue(relay.HOP_THU.get(self.machine_id))
++            self.assertFalse(self.online())
++            self.assertEqual(app.result(timeout=5)[0], 502)
++
++    def test_busy_machine_stays_online_while_running_taken_command(self):
++        with ThreadPoolExecutor(max_workers=1) as pool:
++            self.poll()
++            app = pool.submit(self.ask_app)
++            lenh = self.take()
++            time.sleep(0.8)
++            # Đã quá cửa sổ poll nhưng máy đang làm lệnh đã lấy: vẫn online.
++            self.assertTrue(self.online())
++            self.request("/machine/result/send", {"product_key": KEY, "id": lenh["id"], "ket_qua": {"ok": 1}})
++            self.assertEqual(app.result(timeout=5), (200, {"ok": 1}))
++        with relay.KHOA:
++            self.assertNotIn(self.machine_id, relay.DANG_LAM)
++
++    def test_hung_command_loop_goes_offline_and_next_command_fails_fast(self):
++        with ThreadPoolExecutor(max_workers=1) as pool:
++            self.poll()
++            app = pool.submit(self.ask_app)
++            self.take()
++            # Máy lấy lệnh rồi treo: không poll, không trả kết quả.
++            self.assertEqual(app.result(timeout=5),
++                             (502, {"loi": "Máy chưa trả kết quả, hãy tải lại để kiểm tra"}))
++        self.assertFalse(self.online())
++        started = time.monotonic()
++        self.assertEqual(self.ask_app(), (503, {"loi": "Máy đang offline"}))
++        self.assertLess(time.monotonic() - started, 0.5)
++        with relay.KHOA:
++            self.assertNotIn(self.machine_id, relay.DANG_LAM)
++
++    def test_other_machine_result_does_not_end_busy_state(self):
++        _, other_id = self.owner_machine("other", "other-key")
++        with ThreadPoolExecutor(max_workers=1) as pool:
++            self.poll()
++            app = pool.submit(self.ask_app)
++            lenh = self.take()
++            self.request("/machine/result/send", {"product_key": "other-key", "id": lenh["id"], "ket_qua": {"gia": 1}})
++            self.assertTrue(self.online(other_id))
++            time.sleep(0.8)
++            # Kết quả giả của máy khác không gỡ trạng thái bận của máy này.
++            self.assertTrue(self.online())
++            self.request("/machine/result/send", {"product_key": KEY, "id": lenh["id"], "ket_qua": {"that": 1}})
++            self.assertEqual(app.result(timeout=5), (200, {"that": 1}))
++
++    def test_parallel_polls_and_sends_do_not_deadlock(self):
++        stop = threading.Event()
++
++        def machine():
++            while not stop.is_set():
++                lenh = self.poll()
++                if lenh is not None:
++                    self.request("/machine/result/send", {"product_key": KEY, "id": lenh["id"],
++                                                          "ket_qua": {"id": lenh["id"]}})
++
++        self.poll()
++        machines = [threading.Thread(target=machine, daemon=True) for _ in range(2)]
++        for thread in machines:
++            thread.start()
++        try:
++            with ThreadPoolExecutor(max_workers=8) as pool:
++                results = list(pool.map(lambda _: self.ask_app(), range(40)))
++        finally:
++            stop.set()
++            for thread in machines:
++                thread.join(timeout=5)
++        self.assertEqual([status for status, _ in results], [200] * 40)
++        with relay.KHOA:
++            self.assertNotIn(self.machine_id, relay.DANG_LAM)
++            self.assertEqual(relay.HOP_THU.get(self.machine_id, []), [])
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/python/test_machine_relay.py b/tests/python/test_machine_relay.py
+index f315fc5..0de0179 100644
+--- a/tests/python/test_machine_relay.py
++++ b/tests/python/test_machine_relay.py
+@@ -20,7 +20,7 @@ from unittest.mock import patch
+ from urllib.error import HTTPError
+ from urllib.request import Request, urlopen
+ 
+-MACHINE_DIR = Path(__file__).resolve().parents[2] / "machine"
++MACHINE_DIR = Path(__file__).resolve().parents[2] / "version1.1" / "machine"
+ MACHINE_PACKAGES = ("config", "server_connection", "menu_sync", "ingredient_sync")
+ INGREDIENTS = {"ingredients": [{"ingredient_id": 1, "name": "Sữa", "amount": 500, "max_gram": 1000,
+                                 "max_set": True, "pump_no": 1, "in_stock": True}]}
+diff --git a/tests/python/test_server.py b/tests/python/test_server.py
+index c48d658..fb7634b 100644
+--- a/tests/python/test_server.py
++++ b/tests/python/test_server.py
+@@ -54,7 +54,7 @@ class StartpointTest(unittest.TestCase):
+ 
+     def test_services_share_one_port(self):
+         for path in ('/app/user/account/register', '/app/user/otp/send', '/app/user/otp/verify',
+-                     '/app/user/session/login', '/app/user/session/verify'):
++                     '/app/user/session/login'):
+             status, data = self.request(path, {})
+             self.assertEqual(status, 400)
+             self.assertFalse(data['valid'])
+@@ -75,7 +75,7 @@ class StartpointTest(unittest.TestCase):
+         status, mine = self.request('/app/user/machine/list', {'token': token})
+         self.assertEqual(mine['machines'][0]['role'], 'owner')
+         # Máy xưng danh bằng product key, server tự tra machine_id đã cấp.
+-        status, _ = self.request('/machine/heartbeat/send', {'product_key': 'test-key'})
++        status, _ = self.request('/machine/command/poll', {'product_key': 'test-key'})
+         self.assertEqual(status, 200)
+         status, result = self.request(f"/app/machine/status/get?machine_id={machine['machine_id']}")
+         self.assertTrue(result['online'])
+@@ -96,7 +96,7 @@ class StartpointTest(unittest.TestCase):
+     def test_waiting_app_does_not_block_machine(self):
+         from server.lib.machine import machine_transport as relay
+         token, machine_id = self.make_owner_machine()
+-        self.request('/machine/heartbeat/send', {'product_key': 'relay-key'})
++        self.request('/machine/command/poll', {'product_key': 'relay-key'})
+         with ThreadPoolExecutor(max_workers=1) as pool:
+             app = pool.submit(self.request, '/app/machine/ingredient/get', {
+                 'token': token, 'machine_id': machine_id, 'version': 0,
+@@ -120,7 +120,7 @@ class StartpointTest(unittest.TestCase):
+     def test_long_poll_returns_as_soon_as_command_arrives(self):
+         import time
+         token, machine_id = self.make_owner_machine()
+-        self.request('/machine/heartbeat/send', {'product_key': 'relay-key'})
++        self.request('/machine/command/poll', {'product_key': 'relay-key'})
+         with patch('server.lib.machine.machine_transport.POLL_WAIT_SECONDS', 4), ThreadPoolExecutor(max_workers=1) as pool:
+             started = time.monotonic()
+             poll = pool.submit(self.request, '/machine/command/poll', {'product_key': 'relay-key'})
+@@ -149,7 +149,9 @@ class StartpointTest(unittest.TestCase):
+             'token': other, 'machine_id': machine_id, 'version': 0,
+         })
+         self.assertEqual(status, 403)
+-        self.assertEqual(self.request('/machine/heartbeat/send', {'product_key': 'sai-key'})[0], 403)
++        self.assertEqual(self.request('/machine/command/poll', {'product_key': 'sai-key'})[0], 403)
++        # Route heartbeat đã bỏ: online suy từ poll và kết quả.
++        self.assertEqual(self.request('/machine/heartbeat/send', {'product_key': 'relay-key'})[0], 404)
+         self.assertEqual(self.request('/machine/command/poll', {})[0], 403)
+         # Máy chưa heartbeat thì báo offline ngay, không để app chờ.
+         status, data = self.request('/app/machine/ingredient/get', {
+@@ -157,7 +159,7 @@ class StartpointTest(unittest.TestCase):
+         })
+         self.assertEqual((status, data), (503, {'loi': 'Máy đang offline'}))
+         # Máy khác không lấy được hay trả kết quả cho lệnh không thuộc về nó.
+-        self.request('/machine/heartbeat/send', {'product_key': 'relay-key'})
++        self.request('/machine/command/poll', {'product_key': 'relay-key'})
+         with ThreadPoolExecutor(max_workers=1) as pool:
+             app = pool.submit(self.request, '/app/machine/ingredient/get', {
+                 'token': token, 'machine_id': machine_id, 'version': 0,
+@@ -181,7 +183,7 @@ class StartpointTest(unittest.TestCase):
+ 
+     def test_timed_out_command_is_not_run_or_answered_later(self):
+         token, machine_id = self.make_owner_machine()
+-        self.request('/machine/heartbeat/send', {'product_key': 'relay-key'})
++        self.request('/machine/command/poll', {'product_key': 'relay-key'})
+         refill = {'token': token, 'machine_id': machine_id, 'target': 'all', 'value': 'full'}
+ 
+         def take():
+diff --git a/tests/python/test_server_security.py b/tests/python/test_server_security.py
+index 6a5fbf6..a920176 100644
+--- a/tests/python/test_server_security.py
++++ b/tests/python/test_server_security.py
+@@ -38,13 +38,11 @@ class SecurityScenarioTest(unittest.TestCase):
+             p.start()
+             self.addCleanup(p.stop)
+         init_db()
+-        user_login_process.LOGIN_STATES.clear()
+         rate_limit.IP_REQUESTS.clear()
+         self.server = main.create_server(("127.0.0.1", 0))
+         threading.Thread(target=self.server.serve_forever, daemon=True).start()
+         self.addCleanup(self.server.server_close)
+         self.addCleanup(self.server.shutdown)
+-        self.addCleanup(user_login_process.LOGIN_STATES.clear)
+         self.addCleanup(rate_limit.IP_REQUESTS.clear)
+ 
+     # ---------- tiện ích ----------
+@@ -165,7 +163,7 @@ class SecurityScenarioTest(unittest.TestCase):
+         machine_id = self.machine(owner)
+         _, other_owner = self.user("chu2")
+         self.machine(other_owner, key="fm_may_khac")
+-        self.post("/machine/heartbeat/send", {"product_key": "fm_tem_may_that"})
++        self.post("/machine/command/poll", {"product_key": "fm_tem_may_that"})
+         with ThreadPoolExecutor(1) as pool:
+             app = pool.submit(self.post, "/app/machine/ingredient/get", {"token": owner, "machine_id": machine_id,
+                                                            "version": 0})
+@@ -187,7 +185,7 @@ class SecurityScenarioTest(unittest.TestCase):
+         _, owner = self.user("chu")
+         machine_id = self.machine(owner)
+         # Kẻ tấn công chỉ có key trên tem: heartbeat + hỏi lệnh như máy thật.
+-        self.post("/machine/heartbeat/send", {"product_key": "fm_tem_may_that"})
++        self.post("/machine/command/poll", {"product_key": "fm_tem_may_that"})
+         with ThreadPoolExecutor(1) as pool:
+             pool.submit(self.post, "/app/machine/ingredient/refill", {"token": owner, "machine_id": machine_id,
+                                                     "target": 1, "value": 1})
+@@ -259,7 +257,7 @@ class SecurityScenarioTest(unittest.TestCase):
+                 % (("a" * 32,) + (text,) * 7)).encode()
+         for path in ("/app/user/session/login", "/app/user/account/register", "/app/user/session/logout", "/app/user/machine/register",
+                      "/app/machine/share/accept", "/app/user/machine/list", "/app/machine/menu/get", "/app/machine/ingredient/get",
+-                     "/machine/heartbeat/send"):
++                     "/machine/command/poll"):
+             with self.subTest(path=path):
+                 conn = HTTPConnection("127.0.0.1", self.server.server_port, timeout=10)
+                 conn.request("POST", path, body=body, headers={"Content-Type": "application/json"})
+@@ -291,7 +289,7 @@ class SecurityScenarioTest(unittest.TestCase):
+         """SEC-08: /app/machine/status/get không cần token, ai biết machine_id đều xem được online/last_seen."""
+         _, owner = self.user("chu")
+         machine_id = self.machine(owner)
+-        self.post("/machine/heartbeat/send", {"product_key": "fm_tem_may_that"})
++        self.post("/machine/command/poll", {"product_key": "fm_tem_may_that"})
+         with urlopen(f"http://127.0.0.1:{self.server.server_port}/app/machine/status/get?machine_id={machine_id}") as r:
+             data = json.loads(r.read())
+         self.assertIsNone(data.get("last_seen"))
+diff --git a/tests/tools/menu_crc_stress/harness.py b/tests/tools/menu_crc_stress/harness.py
+index 7b16163..16c0db3 100644
+--- a/tests/tools/menu_crc_stress/harness.py
++++ b/tests/tools/menu_crc_stress/harness.py
+@@ -170,9 +170,9 @@ class Harness:
+         conn.close()
+         from menu_sync import machine_menu_store
+         self._start_patch(patch.object(machine_menu_store, "DB_PATH", self.machine_db))
+-        # main.run() là vòng while True không có cờ dừng: bọc poll()/heartbeat để ném _Stop khi
++        # main.run() là vòng while True không có cờ dừng: bọc poll() để ném _Stop khi
+         # stop() bật cờ, rồi join luồng TRƯỚC khi gỡ patch (tránh luồng sót đụng DB máy thật).
+-        real_poll, hb = self.machine.poll, self.machine.heartbeat
++        real_poll = self.machine.poll
+         stop_event = self._stop_event
+ 
+         def poll():
+@@ -180,16 +180,7 @@ class Harness:
+                 raise _Stop
+             return real_poll()
+ 
+-        def run_heartbeat():
+-            while not stop_event.is_set():
+-                try:
+-                    hb.send_heartbeat()
+-                except (OSError, ValueError) as error:
+-                    print("Khong gui duoc heartbeat:", error, flush=True)
+-                stop_event.wait(hb.HEARTBEAT_INTERVAL_SECONDS)
+-
+         self.machine.poll = poll
+-        self.machine.heartbeat = types.SimpleNamespace(run_heartbeat=run_heartbeat)
+ 
+         def loop():
+             try:
+@@ -210,7 +201,7 @@ class Harness:
+             except (HTTPError, OSError, ValueError):
+                 pass
+             time.sleep(0.05)
+-        raise RuntimeError("Máy không heartbeat được trong thời gian chờ")
++        raise RuntimeError("Máy không online (chưa poll được) trong thời gian chờ")
+ 
+     def stop(self):
+         if not self._started:
+diff --git a/version1.1/machine/config/routing.py b/version1.1/machine/config/routing.py
+index 2ae166b..d587fff 100644
+--- a/version1.1/machine/config/routing.py
++++ b/version1.1/machine/config/routing.py
+@@ -1,7 +1,5 @@
+-"""Đường dẫn API và nhịp gọi server của machine."""
++"""Đường dẫn API mà machine gọi lên server."""
+ 
+ # Đường dẫn API mà machine sử dụng: /machine/<mục_tiêu>/<hành_động>, khớp server/config/routing.py.
+ MACHINE_COMMAND_POLL = "/machine/command/poll"
+ MACHINE_RESULT_SEND = "/machine/result/send"
+-MACHINE_HEARTBEAT_SEND = "/machine/heartbeat/send"
+-HEARTBEAT_INTERVAL_SECONDS = 5
+diff --git a/version1.1/machine/main.py b/version1.1/machine/main.py
+index 67c64d0..ed6d11e 100644
+--- a/version1.1/machine/main.py
++++ b/version1.1/machine/main.py
+@@ -4,12 +4,11 @@ main chỉ tra bảng COMMANDS của các module; module tự kiểm lệnh và
+ """
+ 
+ # Thư viện chuẩn
+-import threading
+ import time
+ import urllib.error
+ 
+ # Kết nối server
+-from server_connection import machine_server_heartbeat as heartbeat, machine_server_request
++from server_connection import machine_server_request
+ 
+ # Các module: instruction → hàm xử lý
+ from ingredient_sync.machine_ingredient_request import COMMANDS as INGREDIENT_COMMANDS
+@@ -52,8 +51,8 @@ def reply(lenh, ket_qua):
+ 
+ 
+ def run():
+-    # Heartbeat chạy riêng để vẫn báo máy đang hoạt động khi xử lý lệnh lâu.
+-    threading.Thread(target=heartbeat.run_heartbeat, daemon=True).start()
++    # Không có thread heartbeat: server suy online từ chính poll và kết quả của vòng này,
++    # nên vòng treo thì máy hiện offline (docs/heartbeat-vs-long-poll.md).
+     while True:
+         lenh = poll()
+         if lenh is None:
+diff --git a/version1.1/machine/server_connection/machine_server_heartbeat.py b/version1.1/machine/server_connection/machine_server_heartbeat.py
+deleted file mode 100644
+index 20da755..0000000
+--- a/version1.1/machine/server_connection/machine_server_heartbeat.py
++++ /dev/null
+@@ -1,31 +0,0 @@
+-"""Báo định kỳ cho server biết machine vẫn đang chạy."""
+-
+-import json
+-import time
+-import urllib.error
+-import urllib.request
+-
+-from config.env import get_product_key, get_server_url
+-from config.routing import HEARTBEAT_INTERVAL_SECONDS, MACHINE_HEARTBEAT_SEND
+-
+-
+-def send_heartbeat():
+-    # Máy xưng danh bằng product key; server tự tra machine_id và ghi thời điểm nhận.
+-    data = {"product_key": get_product_key()}
+-    body = json.dumps(data).encode("utf-8")
+-    request = urllib.request.Request(
+-        get_server_url() + MACHINE_HEARTBEAT_SEND,
+-        data=body,
+-        headers={"Content-Type": "application/json"},
+-    )
+-    response = urllib.request.urlopen(request, timeout=5)
+-    response.close()
+-
+-
+-def run_heartbeat():
+-    while True:
+-        try:
+-            send_heartbeat()
+-        except (urllib.error.URLError, OSError, ValueError) as error:
+-            print("Khong gui duoc heartbeat:", error, flush=True)
+-        time.sleep(HEARTBEAT_INTERVAL_SECONDS)
