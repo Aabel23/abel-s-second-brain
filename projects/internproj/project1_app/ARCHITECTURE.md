@@ -3,15 +3,40 @@ id: project1-app-architecture
 type: project-analysis
 scope: project:project1_app
 status: source-observed
-checked: 2026-10-10
-anchor_commit: 16dab0e
+checked: 2026-10-12
+anchor_commit: 0ec3a56
 source: /home/abel/project/internproj/project1_app
 ---
 
 # Kiến trúc `project1_app`: phân tích toàn repo
 
 Đọc file này khi cần ngữ cảnh code: sửa module, tìm file, hiểu hợp đồng gói tin. Tiến trình xem [STATUS.md](STATUS.md).
-Note được đối chiếu với code tại commit `16dab0e` ngày 10/10/2026. Nếu `git log -1` khác commit này, chỉ đọc diff từ `16dab0e` rồi kiểm lại các mục bị ảnh hưởng, không quét lại toàn repo.
+Mục "Skeleton v2" dưới đây đối chiếu HEAD `0ec3a56` ngày 12/10/2026. Các mục đánh số bên dưới là ảnh chụp **code cũ** tại commit `16dab0e`, chỉ dùng để hiểu lịch sử, không áp vào skeleton mới. Khi HEAD/working tree đổi, kiểm diff phần liên quan.
+
+## Skeleton v2 · hiện hành tại `0ec3a56`
+
+| Vai trò | Code và hợp đồng chính |
+|---|---|
+| Server tài khoản và cloud | `server/src/account.py`, `cloud_protection.py`, `http.py`, `server/main.py`; schema `server/migrations/001_accounts.sql` và `002_devices_sessions.sql` |
+| Server máy và relay | `server/src/devices.py`, `relay.py`; máy được đăng ký qua `factory_register.py`, claim lưu trong MySQL, relay chờ trong RAM |
+| App Flutter | `flutter_app/lib/shared/cloud/`, `feature/user_auth/`, `feature/machine_register/`, `feature/machines/`, `feature/machine_menu/`, `feature/machine_ingredient/` |
+| Android native | `CloudCrypto.kt`, `SessionStore.kt`, `ClaimProtocol.kt`, `ClaimBle.kt`, `ClaimChannel.kt` dưới `flutter_app/android/app/src/main/kotlin/com/example/simple_app/` |
+| Máy | `version1.1/machine/config/`, `pairing/`, `server_connection/`, `main.py`; dùng nghiệp vụ menu/kho cũ qua dispatcher mới |
+| Hợp đồng | `contracts/messages/v2-decisions.md` ưu tiên khi mâu thuẫn với các hợp đồng cũ; lộ trình và trạng thái ở `documentation/plan/mvp-fast-path.md` |
+
+Chưa nghiệm thu trên Android/Pi thật, HTTPS domain/cert và Gmail thật. Review 12/10/2026 phát hiện server vẫn nhận mật khẩu 8 ký tự (D9 yêu cầu 15), cho phép refresh token đã dùng trong 30 giây mà không thu hồi phiên (D10 yêu cầu thu hồi), và phần lớn đường tài khoản gọi `transaction()` trực tiếp nên deadlock/lock timeout trả 503 ngay thay vì retry tối đa 3 lần theo v2. Báo user, chưa sửa code.
+
+## Ảnh chụp trung gian · tài khoản và cloud (12/10/2026, trước v2)
+
+| Vai trò | Code hiện hành | Hợp đồng |
+|---|---|---|
+| Server HTTPS/HPKE/dispatch | `server/src/http.py`, `cloud_protection.py`, `crypto_keys.py`, `types.py`; `server/main.py`, `server/configuration/skeleton.py` | `contracts/messages/cloud-protection.md`, `contracts/COMPATIBILITY.md` |
+| Tài khoản/SMTP/MySQL | `server/src/account.py`, `smtp_mail.py`, `database.py`; `server/migrations/001_accounts.sql` | `contracts/messages/auth.md`, phiếu `documentation/plan/tasks/S-01-server-account.md` |
+| App cloud/account | `flutter_app/lib/shared/cloud/`, `feature/user_auth/data/`, UI auth/OTP, `app_navigation.dart`, `main.dart` | Phiếu `documentation/plan/tasks/A-01-app-account.md` |
+| Android native crypto/storage | `flutter_app/android/app/src/main/kotlin/com/example/simple_app/{CloudCrypto,SessionStore,MainActivity}.kt` | HPKE BouncyCastle, AndroidKeyStore; asset public pin hiện `{}` cố ý fail startup |
+| Test/fixture | `tests/server/`, `tests/fixtures/crypto/`, `flutter_app/test/user_auth/`, AndroidTest `CloudCryptoTest.kt` | 32 server tests/MySQL cô lập, 20 Flutter tests; AndroidTest mới build, chưa chạy thiết bị |
+
+Account/cloud đã qua review nhỏ. Review lớn có 2 finding user chọn ghi nhận chưa sửa (quota login cạnh tranh và ô xác nhận mật khẩu khi quay lại OTP); xem `documentation/plan/account-module-review-2026-10-12.md`. Claim/relay/Bluetooth chưa có code mới; profile Bluetooth HPKE PSK ở `contracts/messages/bt-claim.md` còn BLOCKED. Không diễn giải bộ code cũ phía dưới là đã tích hợp với skeleton.
 
 ## 1. Hệ thống là gì
 

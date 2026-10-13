@@ -292,6 +292,7 @@ sequenceDiagram
   participant B as Khối B
   U->>A: hành động
   A->>B: yêu cầu
+  B->>B: • Kiểm điều kiện<br/>• Ghi kết quả
   B-->>A: trả lời
         </script>
         <div class="dg-canvas"></div>
@@ -446,7 +447,7 @@ stateDiagram-v2
     return {
       startOnLoad:false, theme:'base', themeVariables:v, securityLevel:'loose',
       flowchart:{ htmlLabels:true, curve:'basis', nodeSpacing:28, rankSpacing:40, padding:8, useMaxWidth:false },
-      sequence:{ useMaxWidth:false, mirrorActors:false, wrap:true, width:118, actorMargin:22, boxMargin:6, messageMargin:26, messageFontSize:13, noteFontSize:13, actorFontSize:13, showSequenceNumbers:true },
+      sequence:{ useMaxWidth:false, mirrorActors:false, wrap:false, width:118, actorMargin:22, boxMargin:6, messageMargin:26, messageFontSize:13, noteFontSize:13, actorFontSize:13, showSequenceNumbers:true },
       state:{ useMaxWidth:false }
     };
   }
@@ -461,6 +462,21 @@ stateDiagram-v2
     canvas.innerHTML = '';
     const pre = document.createElement('pre'); pre.className = 'fallback'; pre.textContent = text;
     canvas.appendChild(pre);
+  }
+
+  function polishSequence(canvas){
+    const svg = canvas.querySelector('svg'); if (!svg) return;
+    const circle = svg.querySelector('marker#sequencenumber circle');
+    if (circle) circle.setAttribute('r', '8.4');
+    svg.querySelectorAll('text.sequenceNumber').forEach(el => el.setAttribute('font-size', '16.8px'));
+    svg.querySelectorAll('path[marker-start]').forEach(path => {
+      const match = /^M\s*([\d.]+),([\d.]+)\s+C\s*[\d.]+,[\d.]+\s+[\d.]+,[\d.]+\s+([\d.]+),([\d.]+)/
+        .exec(path.getAttribute('d') || '');
+      if (!match || Math.abs(Number(match[1]) - Number(match[3])) > 2) return;
+      const x = Number(match[1]), y = Number(match[2]);
+      path.setAttribute('d', `M ${x},${y} L ${x},${y + 0.1}`);
+      path.removeAttribute('marker-end');
+    });
   }
 
   // Thu nhỏ vừa khung nếu chỉ rộng hơn khung một chút; quá rộng thì giữ cỡ thật và cho cuộn ngang.
@@ -498,6 +514,7 @@ stateDiagram-v2
       try{
         const { svg } = await mermaid.render('mmd' + (++seq), sourceOf(block));
         canvas.innerHTML = svg;
+        if (block.dataset.kind === 'seq') polishSequence(canvas);
         fit(canvas);
       }catch(err){ console.error(err); showSource(canvas, block.textContent.trim()); }
       addTools(block, canvas);

@@ -39,7 +39,8 @@ Các fact `confirmed` hiện ghi cách mở đầu câu trả lời, thiết k�
 |---|---|---|
 | [facts/luu-md-session-secondbrain.md](facts/luu-md-session-secondbrain.md) | global · confirmed | "lưu md" nghĩa là chạy `/session-secondbrain`, không phải xuất file .md |
 | [facts/reply-yess-bosss.md](facts/reply-yess-bosss.md) | global · confirmed | Mở đầu câu trả lời khi user ra lệnh bằng `yess bosss!!!` |
-| [facts/document-standard-flexmix-manual.md](facts/document-standard-flexmix-manual.md) | global · confirmed | Mọi document mới theo thiết kế chuẩn FexMix_Munual (STANDARD.md + template) |
+| [facts/document-standard-flexmix-manual.md](facts/document-standard-flexmix-manual.md) | global · confirmed | Mọi document mới theo chuẩn FexMix_Munual; nhãn sơ đồ không gãy, nội bộ chỉ nút số lớn 1,4 lần |
+| [facts/document-shared-assets.md](facts/document-shared-assets.md) | global · confirmed | Khi khởi tạo document, tạo `assets/` chung ở gốc, gồm CSS/JS và font cục bộ để mọi trang dùng offline |
 | [facts/document-style-framework.md](facts/document-style-framework.md) | global · superseded | Bản cũ: framework theo document project1_server; đã thay bởi chuẩn FexMix_Munual |
 | [facts/project-map-upkeep.md](facts/project-map-upkeep.md) | global · confirmed | Cập nhật bản đồ project khi review/cập nhật xác nhận cấu trúc hoặc vai trò code đổi |
 | [projects/internproj/README.md](projects/internproj/README.md) | project:internproj · source-observed | Bản đồ ba repo và cách chọn note đúng dự án |
@@ -63,6 +64,7 @@ Các fact `confirmed` hiện ghi cách mở đầu câu trả lời, thiết k�
 | [facts/project1-app-auth-identity-confirmed.md](facts/project1-app-auth-identity-confirmed.md) | project:project1_app · confirmed | Đăng nhập email, mật khẩu ≥8 không ràng buộc, đăng ký trung tính, access 1h/refresh 30 ngày, nhập lại mật khẩu cho việc nguy hiểm, mất email = mất tài khoản, LAN/BT mã hoá, khoá Keystore + bản quyền ký hạn 7 ngày |
 | [facts/save-research-sources-to-vault.md](facts/save-research-sources-to-vault.md) | global · confirmed | Lưu kết quả research, nguồn, case study vào archive vault để định hướng |
 | [sessions/2026-10-11-server-database-research.md](sessions/2026-10-11-server-database-research.md) | project:project1_app | Research database server hãng: 3 agent, ~14 thực thể, HTML `server-database.html` dùng ERD chân chim; doc lệch 3 fact đã chốt (mật khẩu, hạn 7 ngày, chuyển chủ) chưa sửa |
+| [sessions/2026-10-13-linux-server-and-diagram-standard.md](sessions/2026-10-13-linux-server-and-diagram-standard.md) | project:project1_app | Hướng dẫn Linux server; sửa 17 doc có sơ đồ trình tự; chuẩn sơ đồ active trong second brain |
 | [facts/project1-app-server-database-confirmed.md](facts/project1-app-server-database-confirmed.md) | project:project1_app · confirmed | Server giữ bản sao nhật ký; quyền lưu lịch sử; offline thì từ chối lệnh, chỉ giữ thông điệp quản trị; research ở mức khái niệm |
 | [facts/doc-data-diagrams-erd.md](facts/doc-data-diagrams-erd.md) | global · confirmed | Doc về database dùng sơ đồ chuẩn ngành dữ liệu (ERD chân chim, state/sequence UML), không dùng sơ đồ khối FexMix |
 | [proposals/cach-lam-viec-cua-user.md](proposals/cach-lam-viec-cua-user.md) | global · proposed | Suy luận về cách bạn làm việc, chờ bạn xác nhận |

@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "cc61b296907bb926",
+        "id": "e32e0de0ba05fedd",
         "type": "tabs",
         "children": [
           {
-            "id": "34b5b1a01f053554",
+            "id": "b82787859aadafe9",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -181,7 +181,7 @@
       "bases:Create new base": false
     }
   },
-  "active": "34b5b1a01f053554",
+  "active": "b82787859aadafe9",
   "lastOpenFiles": [
     "README.md",
     "projects/internproj/project1_app/archive/contracts-skeleton-research-2026-10-12.md",

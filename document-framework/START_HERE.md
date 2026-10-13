@@ -8,7 +8,7 @@
 
 1. Điền [BRIEF.md](BRIEF.md) cho đề tài mới; đọc nguồn thật của đề tài đó. Không cần mở lại các trang FlexMix.
 2. Dùng [METHOD.md](METHOD.md) để chọn câu hỏi cần trả lời, sơ đồ và mức chi tiết. Lập dàn ý bằng Markdown trước khi viết HTML.
-3. Sao chép `template.html`, `document.css`, `fonts.css`, `fonts/` vào thư mục đầu ra. Thay toàn bộ nội dung ví dụ trong template; giữ các class cần dùng, bỏ khối không liên quan.
+3. Khi khởi tạo bộ document, tạo `assets/` tại gốc bộ tài liệu và đặt CSS, JavaScript, `fonts.css`, `fonts/` dùng chung ở đó. Tạo trang từ `manual/template.html`, thay nội dung ví dụ và liên kết asset bằng đường dẫn tương đối; không sao chép font riêng cho mỗi trang. Xem [quy tắc asset dùng chung](../facts/document-shared-assets.md).
 4. Mở trang ở 1440 px, 768 px và 390 px; kiểm liên kết, tràn ngang, chú giải và bản in. Đối chiếu từng khẳng định quan trọng với nguồn.
 
 Template mở offline bằng trình duyệt; không cần build, CDN hoặc JavaScript. Có theme sáng/tối theo hệ điều hành, mục lục bên trái trên desktop, bảng và sơ đồ cuộn ngang trên màn hẹp, stylesheet in.

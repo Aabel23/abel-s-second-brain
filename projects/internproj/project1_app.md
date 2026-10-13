@@ -3,8 +3,8 @@ id: project-project1-app-map
 type: project-map
 scope: project:project1_app
 status: source-observed
-checked: 2026-10-11
-anchor_commit: 16dab0e
+checked: 2026-10-13
+anchor_commit: 0ec3a56
 source: /home/abel/project/internproj/project1_app
 ---
 
@@ -24,16 +24,18 @@ App Flutter (Android) và server Python trung gian để quản lý máy pha Fle
 | Middleware, plan G0–G7, quy trình team AI | [MIDDLEWARE.md](project1_app/MIDDLEWARE.md) |
 | Cần nguyên văn báo cáo, transcript, log cũ | [archive/README.md](project1_app/archive/README.md), rồi `rg` đúng file |
 
-## Trạng thái một dòng (11/10/2026)
+Tài liệu HTML trong `documentation/architect/`, `documentation/research/` và `documentation/plan/` dùng chung `documentation/assets/`: `doc.css`, `doc.js`, `sequence-layout.js`, `fonts.css` và `fonts/` cục bộ (kiểm nguồn 13/10/2026, working tree chưa commit tại HEAD `0ec3a56`). `documentation/serve_architect.py` phục vụ gốc `documentation/` để cả ba nhánh cùng truy cập asset. Hướng dẫn chạy server trên Linux ở `server/SETUP_LINUX.md`.
 
-HEAD `7bd7f52`: code app/server và docs cũ **đã bị xoá** (`28febfb`, `7bd7f52`) để thiết kế lại hệ IoT. Repo chỉ còn `documentation/` và `version1.1/`. Đang ở tầng 1 hiến pháp; quyết định đã chốt ở [facts/project1-app-v11-iot-design-confirmed.md](../../facts/project1-app-v11-iot-design-confirmed.md). Các note tầng 2 (ARCHITECTURE, TESTING, MIDDLEWARE) mô tả code cũ, chỉ dùng làm tham khảo lịch sử.
+## Trạng thái một dòng (12/10/2026)
+
+HEAD `0ec3a56`, working tree sạch trước review 12/10/2026. Skeleton v2 đã có tài khoản, claim BLE, relay, menu/kho qua máy ở `server/`, `flutter_app/`, `version1.1/machine/`; nghiệm thu Android/Pi/HTTPS/Gmail thật còn mở. Xem [STATUS.md](project1_app/STATUS.md) để lấy tiến độ; [ARCHITECTURE.md](project1_app/ARCHITECTURE.md) có bản đồ code hiện hành, phần code cũ giữ làm lịch sử.
 
 2026-10-11 (chưa commit): đã **xóa hẳn `version1.1/admin_gui/`** và `check_permissions.py` theo lệnh user. `version1.1/database/` tổ chức lại thành `core/` (config, connection, helpers), `schema/` (schema.sql, seed.sql, apply.py), `services/` (inventory, order_ticket, error_log, recipe_export); bỏ mọi CLI của database (`database.main`, CLI của order_ticket/error_log). Hai hàm kho mà `machine/ingredient_sync` cần (`list_ingredients`, `refill`) nằm ở `database/services/inventory.py`. store_gui không còn mở API quản trị; `database.sql` drop `admin_user` và `role_permission`; `install.sh` bỏ phase account. Từ nay mọi chức năng quản trị phải đi qua app + server mới.
 
 ## Kiểm độ tươi trước khi tin note
 
-`git -C /home/abel/project/internproj/project1_app log --oneline -1`. Nếu khác `16dab0e`, chỉ đọc diff từ commit đó (cách làm trong STATUS), cập nhật note rồi trả lời.
+`git -C /home/abel/project/internproj/project1_app log --oneline -1`. Nếu khác `0ec3a56`, đọc diff từ commit neo rồi đối chiếu phần liên quan.
 
 ## Quy ước cứng của repo (đọc nguồn khi sửa code)
 
-`AGENTS.md` (thiết kế và quy trình đã khoá), `MODULE_PATTERN.md` (tên `đối_tượng_thành_phần_hành_động`, route tập trung ở `server/configuration/routing.py` (kiểm 12/10/2026; chuẩn cũ ghi `server/config/`), path tiếng Anh `/<app|machine>/<đối_tượng>/<mục_tiêu>/<hành_động>` theo [facts/routing-naming-standard.md](../../facts/routing-naming-standard.md), `MODULES` import trực tiếp, không registry). Test luôn đặt trong `tests/`. Đổi hợp đồng gói tin thì phải sửa app, server và máy cùng lúc.
+Repo hiện không có `AGENTS.md` hoặc `MODULE_PATTERN.md` (kiểm 12/10/2026). Route tập trung ở `server/configuration/routing.py`; quy ước cũ về `MODULES` thuộc code lịch sử, không áp vào skeleton mới. Test Python ở `tests/`, Flutter ở `flutter_app/test/`. Đổi hợp đồng gói tin phải kiểm app, server và máy cùng lúc.

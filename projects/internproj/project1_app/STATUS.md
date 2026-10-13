@@ -3,8 +3,8 @@ id: project1-app-status
 type: project-status
 scope: project:project1_app
 status: source-observed
-checked: 2026-10-12
-anchor_commit: c34d55e
+checked: 2026-10-13
+anchor_commit: 0ec3a56
 source: /home/abel/project/internproj/project1_app
 ---
 
@@ -14,22 +14,22 @@ source: /home/abel/project/internproj/project1_app
 
 ## Tình trạng hiện tại · 12/10/2026
 
-Repo đã chuyển sang thiết kế lại app/server/máy; bảng trạng thái 09/10 phía dưới là lịch sử code cũ, không dùng để suy ra skeleton mới đã chạy. Lộ trình MVP skeleton đã được user duyệt. C-01 đối chiếu, C-02/C-03 research và C-04 architect contracts đã xong; user chốt đăng ký serial và bản kiểm mã niêm phong trên server trước khi bán, máy tự sinh khóa khi bật lần đầu; cloud giữ TLS + phong bì mã hóa bên trong ngay skeleton. User báo phần mail đã xong. Agent Sol low đang làm C-05 (hợp đồng và phiếu coder); **chưa có coder sản phẩm nào được phát, chưa có OTP/nhận máy/relay mới chạy thật**. Nguồn hiện hành: `documentation/plan/assignments.md`, `documentation/architect/features/contracts.html`, `documentation/plan/contracts-decision-log.md` (working tree chưa commit).
+Repo ở HEAD `0ec3a56`, working tree sạch trước review 12/10/2026. Skeleton v2 đã code tài khoản, claim BLE, relay, menu/kho qua máy; `documentation/plan/mvp-fast-path.md` là trạng thái thực thi hiện hành. Chưa nghiệm thu Android/Pi, HTTPS domain/cert và Gmail thật (I-01). Review đọc code 12/10/2026 ghi ba lệch hợp đồng ở tài khoản, chưa sửa: server chấp nhận mật khẩu 8–14 ký tự (D9), không thu hồi phiên nếu refresh token đã dùng quay lại trong 30 giây (D10), một số đường DB tài khoản không retry deadlock/lock timeout như v2. Bảng 09/10 và phần lớn nhật ký bên dưới là lịch sử code cũ.
 
 ## Kiểm độ tươi (~50 token)
 
 ```sh
-git -C /home/abel/project/internproj/project1_app log --oneline -1    # 58a0b01 → note khớp commit
-git -C /home/abel/project/internproj/project1_app status --short | grep -v '^ D' | grep -v '^?? version1.1/'
+git -C /home/abel/project/internproj/project1_app log --oneline -1    # 0ec3a56 → note khớp commit
+git -C /home/abel/project/internproj/project1_app status --short
 ```
 
-Lúc kiểm (09/10/2026), working tree có ba nhóm thay đổi:
+Lúc kiểm (09/10/2026), working tree có ba nhóm thay đổi (lịch sử):
 - 52 file `machine/` bị xoá. Mã máy đã chuyển sang `version1.1/machine/`.
 - 120 file báo cáo bị xoá vì đã di cư vào vault.
 - 6 file trong `agent_workspace/tasks/middleware/` bị sửa (trỏ link sang vault).
 - `agent_workspace/TEAM.md` và `agent_workspace/README.md` thêm quy tắc ghi báo cáo vào vault.
 
-Lệnh thứ hai chỉ còn in ra 8 file `M` đó. Nếu HEAD khác `58a0b01` hoặc lệnh in thêm dòng khác, đọc `git log 58a0b01..HEAD --stat` hoặc diff của chính các file đó, rồi cập nhật note. Không đọc lại toàn repo.
+Nếu HEAD khác `0ec3a56`, đọc diff từ commit neo để cập nhật note.
 
 ## Một câu
 
@@ -59,6 +59,8 @@ Tính năng cơ bản (tài khoản, đăng ký/chia sẻ máy, menu, kho) đã 
 3. Làm G0 của middleware (B01–B04): snapshot hợp đồng, sửa fixture, test tái hiện, đo môi trường. Bước 1 trùng với một phần B02.
 
 ## Nhật ký (mới nhất ở trên, mỗi dòng 1 sự kiện)
+- 2026-10-13: Thêm hướng dẫn Linux server `server/SETUP_LINUX.md` và link từ README; cập nhật chuẩn sơ đồ trong second brain, template, asset `documentation/architect/assets/sequence-layout.js` và 17 trang có sơ đồ trình tự (không gãy mã/từ, nội bộ chỉ nút số lớn 1,4 lần, nhiều việc thành list). Browser render 17/17, JS syntax và `git diff --check` đạt. Chưa chạy server trên Linux thật; thay đổi chưa commit tại HEAD `0ec3a56`. `documentation/serve_architect.py` đã có sửa đổi từ trước phiên này, không thuộc công việc trên.
+- 2026-10-12: S-01/A-01 coder Sol low hoàn thành code tài khoản cloud TLS+HPKE, SMTP/OTP/phiên và Flutter/Kotlin HPKE+Keystore; review nhỏ vòng2 PASS (server32 tests MySQL cô lập; app20 Flutter tests, APK build). Review lớn module một lần phát hiện quota login race và ô xác nhận mật khẩu còn giá trị; user chốt ghi nhận chưa sửa, giữ mapping INTERNAL_ERROR hiện tại. BT HPKE PSK được user chọn; profile review giữ B-03 BLOCKED, official vector PSK + JVM↔Python primitive interop đạt, chưa Android/Pi thật. User chọn kết nối thiết bị để sau, chưa có HTTPS runtime. Nguồn `documentation/plan/assignments.md`, `documentation/plan/account-module-review-2026-10-12.md`, `documentation/research/ble-noise-feasibility.md`.
 - 2026-10-12: User yêu cầu giao agent Sol low sau khi chuẩn bị mail. C-01 đối chiếu quyết định và code; C-02/C-03 research song song, thêm research bootstrap/mã hóa (nguồn/case study ở `archive/contracts-skeleton-research-2026-10-12.md`); C-04 tạo `documentation/architect/features/contracts.html`, Operator sửa lệch quyết định cũ; user chốt đăng ký serial và bản kiểm mã niêm phong trước khi bán, khóa máy tự sinh, giữ TLS + phong bì mã hóa bên trong ngay skeleton. Giao C-05 cho Planner Sol low; chưa code sản phẩm.
 - 2026-10-12: User chốt mọi database dùng MySQL, bỏ SQLite. `version1.1/machine/menu_sync/machine_menu_store.py` chuyển sang `database/core/connection.py` (placeholder `%s`, DECIMAL→số qua `mysql_number`); `git rm` file rỗng `machine/database/database.db`. Kiểm bằng kết nối giả (nhan_menu, cap_nhat_menu OK); chưa chạy MySQL thật vì không có `BEVERAGE_DB_PASSWORD`. Chưa commit.
 - 2026-10-11: Research database server hãng (3 agent), HTML `documentation/research/server-database.html` (ERD, untracked); chốt nhật ký bản sao trên server, lịch sử quyền, offline từ chối lệnh. Doc còn lệch 3 fact đã chốt, chưa sửa (`archive/server-database-research-2026-10-11.md`).

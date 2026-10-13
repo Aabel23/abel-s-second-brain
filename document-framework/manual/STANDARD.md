@@ -4,8 +4,9 @@ type: design-standard
 scope: global
 status: confirmed
 source: sessions/2026-10-09-flexmix-manual-standard.md
+amended_by: sessions/2026-10-13-linux-server-and-diagram-standard.md
 valid_from: 2026-10-09
-updated: 2026-10-09
+updated: 2026-10-13
 ---
 
 # Thiết kế chuẩn: kiểu FexMix_Munual
@@ -19,7 +20,7 @@ User chốt ngày 09/10/2026: thiết kế của `internproj/FexMix_Munual.html`
 | [template.html](template.html) | Điểm bắt đầu cho mọi document mới. Giữ nguyên `<style>` và script renderer; thay nội dung khung. |
 | [reference-FexMix_Munual.html](reference-FexMix_Munual.html) | Bản chụp trang chuẩn ngày 09/10/2026, để so chất lượng. Không chép nội dung FlexMix sang đề tài khác. |
 
-Template là một fragment HTML (không có `<html>/<head>/<body>`), đúng như trang gốc. Font nạp từ Google Fonts; Mermaid `11.4.1` từ jsDelivr. Cần chạy offline thì đổi sang `../fonts.css` của framework và ghi rõ sơ đồ Mermaid sẽ hiện mã nguồn khi không có mạng.
+Template là một fragment HTML (không có `<html>/<head>/<body>`), đúng như trang gốc. Khi khởi tạo bộ document, tạo `assets/` ở gốc bộ tài liệu để các trang dùng chung CSS, JavaScript và font cục bộ; liên kết bằng đường dẫn tương đối từ mỗi trang. Font offline là mặc định, không dựa vào Google Fonts để hiển thị đúng. Mermaid `11.4.1` trong template hiện lấy từ jsDelivr; khi không có mạng, sơ đồ có thể hiện mã nguồn. Xem [quy tắc asset dùng chung](../../facts/document-shared-assets.md).
 
 ## Khung trang
 
@@ -55,6 +56,9 @@ Script renderer tự chèn `classDef` cho sơ đồ `flow` và cho mọi sơ đ�
 - **Mũi tên không được xéo quá.** Sắp thứ tự khai báo cạnh để nhánh chính nằm ngang; dùng liên kết ẩn `A ~~~ B` để kéo một nút về ngang hàng. Không kéo dài cạnh (`--->`) nếu làm sơ đồ dài ra mà không thẳng hơn.
 - **Sơ đồ trạng thái**: `direction LR`, nhãn chuyển trạng thái 2 dòng `hàm()<br/>giải thích`, tô màu từng trạng thái theo bảng trên, sắp thứ tự cạnh để không cắt nhau.
 - Mọi sơ đồ có figcaption bắt đầu bằng "Nguồn:" chỉ hàm/file cụ thể, cộng một câu giải thích thuật ngữ trong hình.
+- **Nhãn sơ đồ không ngắt giữa từ hoặc mã.** Sơ đồ trình tự tắt tự động bẻ dòng; nếu nhãn dài, cho khung cuộn ngang hoặc rút gọn nhãn và đưa chi tiết vào bảng cạnh sơ đồ. Chỉ xuống dòng tại chỗ người viết chọn bằng `<br/>`.
+- **Một bước gồm nhiều việc phải hiện thành các dòng liệt kê ngắn.** Trong nhãn, dùng `<br/>• ` để tách từng việc; không nối nhiều việc bằng dấu chấm giữa rồi để bộ vẽ tự ngắt dòng.
+- **Xử lý nội bộ không có mũi tên tự quay.** Đặt các việc phía trên đúng trục của bên xử lý, giữ một nút số bước trên trục. Mũi tên chỉ dùng khi có thông điệp qua lại giữa các bên. Nút số trong sơ đồ trình tự có vòng tròn và chữ lớn **1,4 lần** kích thước mặc định của Mermaid (bán kính 6 → 8,4 px; chữ 12 → 16,8 px).
 
 ## Nội dung: viết như bản tiêu chuẩn (user chốt 11/10/2026)
 
@@ -64,4 +68,4 @@ Document là một **standard manual** tự đứng được: minh bạch, ví d
 
 ## Kiểm trước khi giao
 
-Chụp bằng Chrome headless ở 1400 px và 420 px. Trang cuộn mượt nên chụp theo `#id` ra trắng; thay vào đó chép trang sang scratchpad và chèn CSS ẩn các phần khác (chèn ngay sau `<style>` vì file không có `</head>`). Kiểm: không tràn ngang, bảng cạnh sơ đồ xuống dưới ở màn hẹp, mũi tên không cắt nhau, màu đúng nghĩa.
+Chụp bằng Chrome headless ở 1400 px và 420 px. Trang cuộn mượt nên chụp theo `#id` ra trắng; thay vào đó chép trang sang scratchpad và chèn CSS ẩn các phần khác (chèn ngay sau `<style>` vì file không có `</head>`). Kiểm: không tràn ngang ngoài khung sơ đồ có cuộn ngang, bảng cạnh sơ đồ xuống dưới ở màn hẹp, mũi tên không cắt nhau, chữ/mã không gãy giữa chừng, các việc nội bộ chỉ có nút số, màu đúng nghĩa.

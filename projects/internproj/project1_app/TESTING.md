@@ -3,13 +3,19 @@ id: project1-app-testing
 type: project-analysis
 scope: project:project1_app
 status: source-observed
-checked: 2026-10-09
-anchor_commit: 58a0b01
+checked: 2026-10-12
+anchor_commit: 0ec3a56
 ---
 
 # Test `project1_app`: cách chạy và kết quả gần nhất
 
-## Lệnh trên máy Linux này
+## Skeleton v2 · kiểm tại `0ec3a56` ngày 12/10/2026
+
+- `cd flutter_app && flutter analyze`: sạch; `flutter test`: 32/32 đạt.
+- Python môi trường cô lập cài `server/requirements.txt`: `PYTHONPATH=. python -m unittest discover -s tests/server` chạy 46 ca, 21 đạt, 25 skip vì chưa cấp `TEST_DB_*` MySQL cô lập; `PYTHONPATH=. python -m unittest discover -s tests/machine` chạy 19 ca, 16 đạt, 3 skip vì chưa build `tests/kotlin-interop` bằng Gradle.
+- Không chạy MySQL thật, SMTP thật, Android/Pi, HTTPS runtime. `/usr/bin/python3` không có `argon2`/`pyhpke`; dùng venv cài requirements. Test này chỉ kiểm các ca không bị skip. Các lệnh và kết quả bên dưới thuộc code lịch sử.
+
+## Lệnh trên máy Linux này (code lịch sử)
 
 ```sh
 cd /home/abel/project/internproj/project1_app
